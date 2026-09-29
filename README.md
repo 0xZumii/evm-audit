@@ -2,6 +2,9 @@
 
 [![tests](https://github.com/0xZumii/evm-audit/actions/workflows/tests.yml/badge.svg)](https://github.com/0xZumii/evm-audit/actions/workflows/tests.yml)
 
+**Live:** <https://evm-audit.vercel.app> — the same layers, in a browser. The
+approval scan needs a long-lived server, so that tab is disabled there.
+
 A **zero-dependency** toolkit for EVM contract auditing and web3 threat
 research. Four layers, because there are four questions to ask:
 
@@ -391,6 +394,10 @@ pyproject.toml       [tool.vercel] entrypoint = "app:app"
 
 It serves the same `evm_audit/web/` files and calls the same handler functions as
 `serve`, so the two deployments cannot drift; only the transport differs.
+
+Production is at <https://evm-audit.vercel.app>. To deploy your own copy:
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2F0xZumii%2Fevm-audit)
 
 ```bash
 npm i -g vercel
