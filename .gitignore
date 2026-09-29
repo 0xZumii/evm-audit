@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.egg-info/
+build/
+dist/
+# fetched bytecode samples
+*.hex
+
+# Vercel
+.vercel/

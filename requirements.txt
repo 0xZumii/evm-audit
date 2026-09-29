@@ -1,0 +1,2 @@
+# evm-audit has no runtime dependencies. This file exists so the Python
+# runtime is selected for api/*.py on Vercel; installing it is a no-op.

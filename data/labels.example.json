@@ -1,0 +1,42 @@
+{
+  "_schema": {
+    "address": "0x-prefixed 40-hex contract address",
+    "chain": "chain id name, e.g. ethereum, base, arbitrum",
+    "label": "benign | phishing | drainer | unknown",
+    "source": "where the label came from (this matters for reproducibility)",
+    "observed_at": "ISO date you recorded the label",
+    "notes": "free text: family, kit, deployment batch, etc."
+  },
+  "_how_to_populate": [
+    "Benign: well-known verified contracts (stablecoins, DEX routers, major protocols).",
+    "Phishing/drainer: block-explorer labels, public research (e.g. ScamSniffer-style writeups),",
+    "  or your own tracing. NEVER guess a label -- an unverified label poisons the dataset.",
+    "Always record the source and the date, because drainers rotate contracts constantly."
+  ],
+  "samples": [
+    {
+      "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+      "chain": "ethereum",
+      "label": "benign",
+      "source": "known USDC proxy; sanity check that features look normal",
+      "observed_at": "2026-09-21",
+      "notes": "upgradeable proxy -- good proxy-pattern baseline"
+    },
+    {
+      "address": "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+      "chain": "ethereum",
+      "label": "benign",
+      "source": "Uniswap V2 Router02",
+      "observed_at": "2026-09-21",
+      "notes": "large dispatch table baseline"
+    },
+    {
+      "address": "0x0000000000000000000000000000000000000000",
+      "chain": "ethereum",
+      "label": "unknown",
+      "source": "placeholder -- replace with a researched phishing address and cite the source",
+      "observed_at": "2026-09-21",
+      "notes": "do not ship guessed labels"
+    }
+  ]
+}

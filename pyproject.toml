@@ -1,0 +1,26 @@
+[project]
+name = "evm-audit"
+version = "0.2.0"
+description = "Zero-dependency EVM bytecode, signature, EIP-712 and Solidity-source analysis for contract-auditing practice"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "0xZumii" }]
+keywords = ["ethereum", "evm", "solidity", "security", "smart-contract-audit"]
+requires-python = ">=3.10"
+dependencies = []
+
+[project.scripts]
+evm-audit = "evm_audit.cli:main"
+
+[project.urls]
+Repository = "https://github.com/0xZumii/evm-audit"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["evm_audit"]
+
+[tool.setuptools.package-data]
+evm_audit = ["web/*"]

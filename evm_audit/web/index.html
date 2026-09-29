@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>evm-audit — read a contract before you trust it</title>
+<meta name="description" content="A local front end for the evm-audit layers: Solidity source, bytecode features and disassembly, calldata and EIP-712 decoding, signature recovery, proxy resolution and allowance exposure. Never a verdict." />
+<link rel="icon" type="image/svg+xml" href="./logo.svg" />
+<link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap header-inner">
+    <div class="brand">
+      <img class="brand-mark" src="./logo.svg" alt="" width="42" height="42" />
+      <div class="brand-text">
+        <h1>evm-audit <span class="tag-version" id="version"></span></h1>
+        <p class="tagline">Read a contract before you trust it.</p>
+      </div>
+    </div>
+    <nav class="site-nav">
+      <button class="navbtn active" data-view="source">Source</button>
+      <button class="navbtn" data-view="bytecode">Bytecode</button>
+      <button class="navbtn" data-view="decode">Decode</button>
+      <button class="navbtn" data-view="sign">Sign</button>
+      <button class="navbtn" data-view="approvals">Approvals</button>
+      <button class="navbtn" data-view="about">About</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ===================== SOURCE ===================== -->
+  <div id="view-source" class="view active">
+    <section class="intro">
+      <p>
+        Paste Solidity and read the structural pass: who can call what, whether a
+        state write happens after an external call, where <code>tx.origin</code>
+        or <code>delegatecall</code> appears, and what a signature or price feed
+        is missing.
+      </p>
+      <p class="dim">
+        It is a lexer, not a compiler. It does not resolve inheritance, check
+        types, or follow control flow, and it never says a contract is safe.
+      </p>
+    </section>
+
+    <div class="row toolbar">
+      <input id="src-name" type="text" spellcheck="false" value="Pasted.sol" aria-label="file name" />
+      <button type="button" id="analyze">Analyze</button>
+      <button type="button" class="secondary" id="clear-src">Clear</button>
+      <button type="button" class="secondary" id="load-example">Load a vulnerable example</button>
+    </div>
+
+    <textarea id="src-text" rows="16" spellcheck="false"
+      placeholder="// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+contract Vault {
+    mapping(address => uint256) public balances;
+
+    function withdraw() external {
+        uint256 amount = balances[msg.sender];
+        (bool ok, ) = msg.sender.call{value: amount}(&quot;&quot;);
+        require(ok, &quot;call failed&quot;);
+        balances[msg.sender] = 0;
+    }
+}"></textarea>
+
+    <output id="src-out" class="out" aria-live="polite"></output>
+  </div>
+
+  <!-- ===================== BYTECODE ===================== -->
+  <div id="view-bytecode" class="view">
+    <section class="intro">
+      <p>
+        Read a deployed contract's runtime code, or raw <code>0x</code> bytecode.
+        Files are CLI-only, so this page cannot ask the server to read local
+        files.
+      </p>
+    </section>
+
+    <div class="row toolbar">
+      <input id="bc-target" type="text" spellcheck="false"
+             placeholder="0x address, or raw 0x bytecode" aria-label="bytecode target" />
+      <label class="inline"><input id="bc-raw" type="checkbox" /> raw hex</label>
+      <button type="button" id="bc-features">Features</button>
+      <button type="button" class="secondary" id="bc-disasm">Disassemble</button>
+      <button type="button" class="secondary" id="bc-resolve">Resolve proxy</button>
+    </div>
+    <p class="hint">
+      Features and disassembly work on raw hex with no network. An address needs
+      an RPC endpoint (the CLI's default public one).
+    </p>
+
+    <output id="bc-out" class="out" aria-live="polite"></output>
+  </div>
+
+  <!-- ===================== DECODE ===================== -->
+  <div id="view-decode" class="view">
+    <section class="intro">
+      <p>
+        See what a payload actually authorises. These run entirely locally — no
+        network, no signature.
+      </p>
+    </section>
+
+    <section class="block">
+      <h2 class="section">Transaction calldata</h2>
+      <textarea id="cd-data" rows="5" spellcheck="false"
+        placeholder="0x095ea7b3…  (paste the calldata your wallet is about to send)"></textarea>
+      <div class="row toolbar">
+        <button type="button" id="cd-run">Decode calldata</button>
+      </div>
+      <output id="cd-out" class="out" aria-live="polite"></output>
+    </section>
+
+    <section class="block">
+      <h2 class="section">Selectors</h2>
+      <textarea id="sel-sigs" rows="3" spellcheck="false"
+        placeholder="approve(address,uint256)
+transfer(address,uint256)"></textarea>
+      <div class="row toolbar">
+        <button type="button" id="sel-run">Derive selectors</button>
+      </div>
+      <output id="sel-out" class="out" aria-live="polite"></output>
+    </section>
+  </div>
+
+  <!-- ===================== SIGN ===================== -->
+  <div id="view-sign" class="view">
+    <section class="intro">
+      <p>
+        Decode an <code>eth_signTypedData_v4</code> request, optionally recover
+        the signer, and check whether a contract's own EIP-712 domain hashes to
+        what a wallet would sign.
+      </p>
+    </section>
+
+    <section class="block">
+      <h2 class="section">Typed data (permit / Permit2 / EIP-712)</h2>
+      <textarea id="td-payload" rows="10" spellcheck="false"
+        placeholder='{"types":{…},"primaryType":"Permit","domain":{…},"message":{…}}'></textarea>
+      <div class="row toolbar">
+        <input id="td-signature" type="text" spellcheck="false" placeholder="signature (optional), 0x… 65 bytes" />
+        <input id="td-signer" type="text" spellcheck="false" placeholder="expected signer (optional)" />
+      </div>
+      <div class="row toolbar">
+        <button type="button" id="td-run">Decode</button>
+        <label class="inline"><input id="td-domain" type="checkbox" /> also check the domain on-chain</label>
+      </div>
+      <output id="td-out" class="out" aria-live="polite"></output>
+    </section>
+
+    <section class="block">
+      <h2 class="section">EIP-712 domain check</h2>
+      <div class="row toolbar">
+        <input id="ep-target" type="text" spellcheck="false" placeholder="0x contract address" />
+        <input id="ep-name" type="text" spellcheck="false" placeholder="name (only if the contract publishes none)" />
+        <input id="ep-version" type="text" spellcheck="false" placeholder="version (only if needed)" />
+        <input id="ep-chain" type="text" spellcheck="false" placeholder="chainId (optional)" class="narrow" />
+      </div>
+      <div class="row toolbar">
+        <button type="button" id="ep-run">Check domain</button>
+      </div>
+      <output id="ep-out" class="out" aria-live="polite"></output>
+    </section>
+  </div>
+
+  <!-- ===================== APPROVALS ===================== -->
+  <div id="view-approvals" class="view">
+    <section class="intro">
+      <p>
+        The inverse question: forget payloads — what can be taken from an address
+        <em>without another signature</em>? It finds candidate approvals in logs
+        and re-reads current state for each one.
+      </p>
+      <p class="note">
+        Logs are the sieve; the state read is the truth. This is bounded by the
+        block range and token list, and it can be slow. "None found" means none
+        in what was scanned — not "safe".
+      </p>
+    </section>
+
+    <div class="row toolbar">
+      <input id="al-owner" type="text" spellcheck="false" placeholder="0x owner address" />
+      <input id="al-lookback" type="text" spellcheck="false" value="5000" class="narrow" aria-label="lookback blocks" />
+      <input id="al-maxcalls" type="text" spellcheck="false" value="1200" class="narrow" aria-label="max log requests" />
+    </div>
+    <textarea id="al-tokens" rows="3" spellcheck="false"
+      placeholder="Optional token list: one 0x address per line, or a token-list JSON. Without it, a bundled 10-token seed is used — which is not a list."></textarea>
+    <div class="row toolbar">
+      <button type="button" id="al-run">Scan</button>
+      <span class="hint" id="al-status"></span>
+    </div>
+
+    <output id="al-out" class="out" aria-live="polite"></output>
+  </div>
+
+  <!-- ===================== ABOUT ===================== -->
+  <div id="view-about" class="view">
+    <section class="intro">
+      <p>
+        <strong>evm-audit</strong> is a zero-dependency toolkit for contract
+        auditing and web3 threat research. This page is a local front end for
+        every layer; the same functions are reachable from the CLI.
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>The layers</h2>
+      <ul>
+        <li><strong>Source</strong> — a Solidity lexer and structural pass: access control, call ordering, <code>tx.origin</code>, initializers, signature and oracle shapes.</li>
+        <li><strong>Bytecode</strong> — disassembly, structural features, proxy detection (EIP-1167 / EIP-1967 / ZeppelinOS), and on-chain implementation resolution.</li>
+        <li><strong>Decode</strong> — transaction calldata and 4-byte selector derivation, in plain language.</li>
+        <li><strong>Sign</strong> — EIP-712 typed-data decoding, secp256k1 signer recovery, and a domain-separator check against the contract.</li>
+        <li><strong>Approvals</strong> — standing ERC-20 / ERC-721 / Permit2 allowances, re-read from current state.</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>What it will not do</h2>
+      <ul>
+        <li><strong>It never says safe or unsafe.</strong> Every finding is a place to look; absence of findings is not a clean bill of health.</li>
+        <li><strong>The source layer is syntactic.</strong> Inheritance is not resolved, types are not checked, control flow is not evaluated.</li>
+        <li><strong>Bytecode cannot see the dominant attack.</strong> Most drains are signature phishing — a legitimate contract, a malicious payload. That is what the Decode and Sign layers are for.</li>
+        <li><strong>Approvals are bounded.</strong> An approval before the scanned range, or on a token not in the list, is invisible here.</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>The CLI</h2>
+      <pre class="code">python -m evm_audit source contracts/MyToken.sol
+python -m evm_audit features 0xA0b8...eB48
+python -m evm_audit disasm 0xA0b8...eB48 --limit 60
+python -m evm_audit resolve 0xA0b8...eB48 --features
+python -m evm_audit calldata 0x095ea7b3...
+python -m evm_audit typed-data permit.json --signature 0x... --check-domain
+python -m evm_audit eip712 0xA0b8...eB48 --name "USD Coin" --version 2
+python -m evm_audit allowances 0xOwner... --tokens tokenlist.json
+python -m evm_audit serve</pre>
+    </section>
+  </div>
+
+</main>
+
+<footer class="wrap site-footer">
+  <p class="dim">
+    Runs on a local server bound to <code>127.0.0.1</code>. Input is analyzed in
+    memory and not written anywhere. A request leaves the machine only to read a
+    chain: an RPC for code or state, and Sourcify for verified source.
+  </p>
+</footer>
+
+<script type="module" src="./app.js"></script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "outputDirectory": "evm_audit/web",
+  "rewrites": [
+    { "source": "/api/typed-data", "destination": "/api/typeddata" }
+  ]
+}

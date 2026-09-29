@@ -1,0 +1,9 @@
+# Normalize line endings on commit: store LF in the repository regardless of
+# the platform that wrote the file. Without this, a Windows checkout commits
+# CRLF, and the Linux CI runner then sees different bytes than the developer did.
+* text=auto eol=lf
+
+# Binary assets must never be touched.
+*.png binary
+*.jpg binary
+*.ico binary
