@@ -15,6 +15,11 @@ evm-audit = "evm_audit.cli:main"
 [project.urls]
 Repository = "https://github.com/0xZumii/evm-audit"
 
+# Vercel loads the single WSGI application from app.py. Stated explicitly so the
+# entrypoint does not depend on detection heuristics.
+[tool.vercel]
+entrypoint = "app:app"
+
 [build-system]
 requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"

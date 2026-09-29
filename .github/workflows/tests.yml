@@ -45,3 +45,4 @@ jobs:
           echo 'pragma solidity 0.8.20; contract C { function f() external { require(tx.origin == msg.sender); } }' \
             | python -m evm_audit source - --min-level high
           python -c "import evm_audit.vercel, evm_audit.server, evm_audit.sol_source; print('imports ok')"
+          python -c "import app; print('vercel entrypoint ok:', callable(app.app))"

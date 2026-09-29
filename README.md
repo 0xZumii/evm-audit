@@ -373,16 +373,24 @@ is **not** what Vercel runs.
 
 ### Vercel
 
-Vercel runs functions, not servers. The analysis is already a set of pure
-functions, so `api/*.py` wraps each one as a WSGI app (through
-`evm_audit/vercel.py`) and Vercel serves `evm_audit/web/` as static assets:
+Vercel does not run long-lived servers. It also does **not** use `/api/*.py`
+files once it detects a Python **application**: a detected application handles
+*every* request and file-based functions are ignored ([Vercel docs: framework
+preset precedence](https://vercel.com/docs/functions/runtimes/python/api-directory)).
+A `pyproject.toml` is enough to trigger that, which is why a first attempt that
+shipped `api/*.py` failed with *"No python entrypoint found in default
+locations"*.
+
+So the deployment is one WSGI app:
 
 ```
-vercel.json          outputDirectory, and the /api/typed-data rewrite
-requirements.txt     empty -- the package has no runtime dependencies
-api/*.py             one function per endpoint
-evm_audit/vercel.py  the WSGI adapter
+app.py               the entrypoint Vercel loads; re-exports `app`
+evm_audit/vercel.py  serves the page and routes /api/* to the layers
+pyproject.toml       [tool.vercel] entrypoint = "app:app"
 ```
+
+It serves the same `evm_audit/web/` files and calls the same handler functions as
+`serve`, so the two deployments cannot drift; only the transport differs.
 
 ```bash
 npm i -g vercel
@@ -392,9 +400,9 @@ vercel --prod     # production
 
 Three things to know before pointing it at the public:
 
-1. **Set `EVM_AUDIT_RPC`.** Without it the functions use the free public
-   endpoints, which rate-limit datacenter IPs — and a serverless function looks
-   exactly like one. Any Ethereum JSON-RPC URL works:
+1. **Set `EVM_AUDIT_RPC`.** Without it the app uses the free public endpoints,
+   which rate-limit datacenter IPs — and a serverless function looks exactly
+   like one. Any Ethereum JSON-RPC URL works:
 
    ```bash
    vercel env add EVM_AUDIT_RPC production
@@ -403,15 +411,14 @@ Three things to know before pointing it at the public:
 2. **The Approvals tab is disabled.** That layer issues hundreds of
    `eth_getLogs` calls and will not fit a serverless timeout, so
    `/api/allowances` answers `501` and the page disables the tab. The other four
-   layers fit. This is stated, not hidden — `/api/health` reports
-   `"allowances": false` and the UI acts on it.
+   layers fit. Stated, not hidden: `/api/health` reports `"allowances": false`
+   and the UI acts on it.
 
 3. **Request bodies are capped at 4 MB** (Vercel's limit is near 4.5 MB), down
-   from the local server's 8 MB.
-
-The `/api/typed-data` path keeps its hyphen through a `vercel.json` rewrite: a
-Vercel Python entrypoint is imported as a module, so the file cannot be named
-with one.
+   from the local server's 8 MB. Static files are served by the function too,
+   with a short cache header, because a detected Python application owns every
+   route — there is no separate CDN pass. That is the cost of the single-app
+   shape, and it is fine at this size.
 
 ### A long-lived host instead
 
@@ -582,9 +589,10 @@ Source layer:
 - `web/` — a static page (no framework, no build step) in the same visual
   language as the other tools. Untrusted contract text is only ever set with
   `textContent`, never `innerHTML`.
-- `vercel.py` — a WSGI adapter: it turns each pure handler into a Vercel
-  function, keeps big integers exact on the wire, and answers `501` for the
-  layer that needs a long-lived server. `api/*.py` are the one-line entrypoints.
+- `vercel.py` — the deployment as one WSGI app: it serves `web/` and routes
+  `/api/*` to the same pure handlers, keeps big integers exact on the wire, and
+  answers `501` for the layer that needs a long-lived server. Root `app.py` is
+  the entrypoint Vercel loads.
 
 ## Known limitations (by design, for now)
 
@@ -615,7 +623,7 @@ Source layer:
 python -m unittest discover -s tests -v
 ```
 
-156 tests: disassembly (push data, jumpdests, metadata), Keccak-256 vectors,
+165 tests: disassembly (push data, jumpdests, metadata), Keccak-256 vectors,
 derived selectors, calldata decoding, typed-data analysis, EIP-712
 (encodeType, domain separators, ERC-5267 decoding, secp256k1 recovery against
 the spec's `Mail` vector), corpus parsing, batch classification, log-scan
@@ -643,7 +651,10 @@ rather than a rounded number.
 The Vercel adapter is tested as WSGI, offline: a good request, a wrong method
 (`405`), malformed JSON (`400`), an oversized body (`413`, refused *before* the
 body is read), an exact big integer surviving the round trip, and the allowance
-endpoint answering `501`.
+endpoint answering `501`. The combined app Vercel loads is tested too: `/` and
+the static assets, both spellings of the typed-data route, `/api/health`, a
+`405` for the wrong method, a `404` for an unknown path, and that no path can
+escape `evm_audit/web/`.
 
 ## Known limits of discovery
 
