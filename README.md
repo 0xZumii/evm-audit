@@ -1,5 +1,7 @@
 # evm-audit
 
+[![tests](https://github.com/0xZumii/evm-audit/actions/workflows/tests.yml/badge.svg)](https://github.com/0xZumii/evm-audit/actions/workflows/tests.yml)
+
 A **zero-dependency** toolkit for EVM contract auditing and web3 threat
 research. Four layers, because there are four questions to ask:
 

@@ -1,0 +1,47 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: py${{ matrix.python }} / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        include:
+          # One Windows leg: the server binds ports differently there, and the
+          # source layer resolves paths differently.
+          - os: windows-latest
+            python: "3.12"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Test suite
+        run: python -m unittest discover -s tests
+
+      # The tests are offline; this proves the entrypoints are too.
+      - name: Offline smoke
+        shell: bash
+        run: |
+          python -m evm_audit --help > /dev/null
+          python -m evm_audit selector "approve(address,uint256)"
+          echo 'pragma solidity 0.8.20; contract C { function f() external { require(tx.origin == msg.sender); } }' \
+            | python -m evm_audit source - --min-level high
+          python -c "import evm_audit.vercel, evm_audit.server, evm_audit.sol_source; print('imports ok')"
